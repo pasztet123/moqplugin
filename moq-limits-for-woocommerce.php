@@ -1,20 +1,26 @@
 <?php
 /**
  * Plugin Name: MOQ Limits for WooCommerce
- * Description: Simple plugin to set minimum and maximum order limits
- * Version: 1.1.0
+ * Description: Simple plugin to set minimum and maximum order limits and minimum order surcharge
+ * Version: 1.2.2
  * Author: Investracker
  * Text Domain: moq-limits
  * Requires at least: 5.0
  * Requires PHP: 7.2
  * WC requires at least: 3.0
- * WC tested up to: 9.0
+ * WC tested up to: 10.5.1
  * Requires Plugins: woocommerce
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
+
+add_action('before_woocommerce_init', function() {
+    if (class_exists(\Automattic\WooCommerce\Utilities\FeaturesUtil::class)) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+    }
+});
 
 class MOQ_Limits_Plugin {
     
@@ -33,13 +39,28 @@ class MOQ_Limits_Plugin {
             'premium_required' => 'Ta funkcja wymaga aktywnej licencji premium',
             'min_order_label' => 'Minimalna kwota zamówienia',
             'max_order_label' => 'Maksymalna kwota zamówienia',
+            'min_order_surcharge_label' => 'Dopłata do małego zamówienia',
+            'min_order_surcharge_desc' => 'Nalicz jedną lub wiele dopłat, jeśli wartość koszyka jest niższa niż wskazane progi. Działa równolegle z limitami minimalnej i maksymalnej kwoty zamówienia.',
+            'surcharge_threshold_label' => 'Próg dopłaty',
+            'surcharge_type_label' => 'Typ dopłaty',
+            'surcharge_value_label' => 'Wartość dopłaty',
+            'surcharge_type_fixed' => 'Kwotowa',
+            'surcharge_type_percentage' => 'Procentowa',
+            'add_surcharge_rule' => 'Dodaj próg dopłaty',
+            'small_order_surcharge_fee' => 'Dopłata do małego zamówienia',
             'leave_empty' => 'Pozostaw puste aby wyłączyć',
             'product_limits_label' => 'Limity dla produktów (Premium)',
             'product_limits_desc' => 'Ustaw minimalne i maksymalne ilości dla konkretnych produktów',
             'category_limits_label' => 'Limity dla kategorii (Premium)',
             'category_limits_desc' => 'Ustaw minimalne i maksymalne ilości dla całych kategorii produktów',
+            'product_surcharges_label' => 'Dopłaty dla produktów (Premium)',
+            'product_surcharges_desc' => 'Nalicz dopłatę do małego zamówienia, jeśli w koszyku znajdują się wskazane produkty',
+            'category_surcharges_label' => 'Dopłaty dla kategorii (Premium)',
+            'category_surcharges_desc' => 'Nalicz dopłatę do małego zamówienia, jeśli w koszyku znajdują się produkty z wybranych kategorii',
             'add_product_limit' => 'Dodaj limit produktu',
             'add_category_limit' => 'Dodaj limit kategorii',
+            'add_product_surcharge' => 'Dodaj dopłatę produktu',
+            'add_category_surcharge' => 'Dodaj dopłatę kategorii',
             'select_product' => 'Wybierz produkt',
             'select_category' => 'Wybierz kategorię',
             'min_quantity' => 'Min. ilość',
@@ -47,13 +68,17 @@ class MOQ_Limits_Plugin {
             'remove' => 'Usuń',
             'regional_limits_label' => 'Limity regionalne (Premium)',
             'regional_limits_desc' => 'Ustaw różne limity kwotowe dla konkretnych krajów, stanów lub kodów pocztowych',
+            'regional_surcharges_label' => 'Dopłaty regionalne (Premium)',
+            'regional_surcharges_desc' => 'Nalicz dopłatę do małego zamówienia dla wskazanych krajów, stanów lub kodów pocztowych',
             'add_regional_limit' => 'Dodaj limit regionalny',
+            'add_regional_surcharge' => 'Dodaj dopłatę regionalną',
             'select_country' => 'Wybierz kraj',
             'select_state' => 'Wybierz stan (opcjonalnie)',
             'postal_code' => 'Kod pocztowy (opcjonalnie)',
             'postal_code_placeholder' => 'np. 12345 lub 12-345',
             'min_amount' => 'Min. kwota',
             'max_amount' => 'Max. kwota',
+            'threshold_amount' => 'Próg zamówienia',
             'any_country' => 'Dowolny kraj',
             'any_state' => 'Dowolny stan',
             'regional_min_error' => 'Minimalna wartość zamówienia dla %s: %s (Twój koszyk: %s)',
@@ -80,13 +105,28 @@ class MOQ_Limits_Plugin {
             'premium_required' => 'This feature requires an active premium license',
             'min_order_label' => 'Minimum Order Amount',
             'max_order_label' => 'Maximum Order Amount',
+            'min_order_surcharge_label' => 'Small Order Surcharge',
+            'min_order_surcharge_desc' => 'Add one or more surcharges when the cart subtotal is below configured thresholds. Works alongside the minimum and maximum order amount limits.',
+            'surcharge_threshold_label' => 'Surcharge Threshold',
+            'surcharge_type_label' => 'Surcharge Type',
+            'surcharge_value_label' => 'Surcharge Value',
+            'surcharge_type_fixed' => 'Fixed',
+            'surcharge_type_percentage' => 'Percentage',
+            'add_surcharge_rule' => 'Add Surcharge Threshold',
+            'small_order_surcharge_fee' => 'Small order surcharge',
             'leave_empty' => 'Leave empty to disable',
             'product_limits_label' => 'Product Limits (Premium)',
             'product_limits_desc' => 'Set minimum and maximum quantities for specific products',
             'category_limits_label' => 'Category Limits (Premium)',
             'category_limits_desc' => 'Set minimum and maximum quantities for entire product categories',
+            'product_surcharges_label' => 'Product Surcharges (Premium)',
+            'product_surcharges_desc' => 'Apply a small order surcharge when the cart contains selected products',
+            'category_surcharges_label' => 'Category Surcharges (Premium)',
+            'category_surcharges_desc' => 'Apply a small order surcharge when the cart contains products from selected categories',
             'add_product_limit' => 'Add Product Limit',
             'add_category_limit' => 'Add Category Limit',
+            'add_product_surcharge' => 'Add Product Surcharge',
+            'add_category_surcharge' => 'Add Category Surcharge',
             'select_product' => 'Select Product',
             'select_category' => 'Select Category',
             'min_quantity' => 'Min. Qty',
@@ -94,13 +134,17 @@ class MOQ_Limits_Plugin {
             'remove' => 'Remove',
             'regional_limits_label' => 'Regional Limits (Premium)',
             'regional_limits_desc' => 'Set different order limits for specific countries, states, or postal codes',
+            'regional_surcharges_label' => 'Regional Surcharges (Premium)',
+            'regional_surcharges_desc' => 'Apply a small order surcharge for selected countries, states, or postal codes',
             'add_regional_limit' => 'Add Regional Limit',
+            'add_regional_surcharge' => 'Add Regional Surcharge',
             'select_country' => 'Select Country',
             'select_state' => 'Select State (Optional)',
             'postal_code' => 'Postal Code (Optional)',
             'postal_code_placeholder' => 'e.g. 12345 or 12-345',
             'min_amount' => 'Min. Amount',
             'max_amount' => 'Max. Amount',
+            'threshold_amount' => 'Order Threshold',
             'any_country' => 'Any Country',
             'any_state' => 'Any State',
             'regional_min_error' => 'Minimum order value for %s: %s (Your cart: %s)',
@@ -118,6 +162,7 @@ class MOQ_Limits_Plugin {
     public function __construct() {
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'register_settings'));
+        add_action('woocommerce_cart_calculate_fees', array($this, 'apply_minimum_order_surcharge'));
         add_action('woocommerce_check_cart_items', array($this, 'validate_cart'));
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), array($this, 'add_settings_link'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
@@ -178,9 +223,16 @@ class MOQ_Limits_Plugin {
         register_setting('moq_limits_settings', 'moq_language');
         register_setting('moq_limits_settings', 'moq_min_order_amount');
         register_setting('moq_limits_settings', 'moq_max_order_amount');
+        register_setting('moq_limits_settings', 'moq_min_order_surcharge_threshold');
+        register_setting('moq_limits_settings', 'moq_min_order_surcharge_type');
+        register_setting('moq_limits_settings', 'moq_min_order_surcharge_value');
+        register_setting('moq_limits_settings', 'moq_min_order_surcharges');
         register_setting('moq_limits_settings', 'moq_product_limits');
         register_setting('moq_limits_settings', 'moq_category_limits');
         register_setting('moq_limits_settings', 'moq_regional_limits');
+        register_setting('moq_limits_settings', 'moq_product_surcharges');
+        register_setting('moq_limits_settings', 'moq_category_surcharges');
+        register_setting('moq_limits_settings', 'moq_regional_surcharges');
     }
     
     public function settings_page() {
@@ -190,10 +242,28 @@ class MOQ_Limits_Plugin {
         $product_limits = json_decode(get_option('moq_product_limits', '[]'), true);
         $category_limits = json_decode(get_option('moq_category_limits', '[]'), true);
         $regional_limits = json_decode(get_option('moq_regional_limits', '[]'), true);
+        $min_order_surcharges = $this->get_global_surcharge_rules();
+        $product_surcharges = json_decode(get_option('moq_product_surcharges', '[]'), true);
+        $category_surcharges = json_decode(get_option('moq_category_surcharges', '[]'), true);
+        $regional_surcharges = json_decode(get_option('moq_regional_surcharges', '[]'), true);
         
         if (!is_array($product_limits)) $product_limits = array();
         if (!is_array($category_limits)) $category_limits = array();
         if (!is_array($regional_limits)) $regional_limits = array();
+        if (!is_array($min_order_surcharges)) $min_order_surcharges = array();
+        if (!is_array($product_surcharges)) $product_surcharges = array();
+        if (!is_array($category_surcharges)) $category_surcharges = array();
+        if (!is_array($regional_surcharges)) $regional_surcharges = array();
+
+        if (empty($min_order_surcharges)) {
+            $min_order_surcharges = array(
+                array(
+                    'threshold' => '',
+                    'type' => 'fixed',
+                    'value' => '',
+                ),
+            );
+        }
         
         // Pobierz kraje i stany z WooCommerce
         $countries_obj = new WC_Countries();
@@ -264,6 +334,50 @@ class MOQ_Limits_Plugin {
                                    class="regular-text"> 
                             <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
                             <p class="description"><?php echo esc_html($this->get_text('leave_empty')); ?></p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label><?php echo esc_html($this->get_text('min_order_surcharge_label')); ?></label>
+                        </th>
+                        <td>
+                            <div id="global-surcharges-container">
+                                <?php foreach ($min_order_surcharges as $index => $surcharge): ?>
+                                <div class="moq-limit-row" data-index="<?php echo $index; ?>">
+                                    <div>
+                                        <label style="display: block; margin-bottom: 4px;"><?php echo esc_html($this->get_text('surcharge_threshold_label')); ?></label>
+                                        <input type="number" step="0.01" name="moq_min_order_surcharges_json[<?php echo $index; ?>][threshold]"
+                                               value="<?php echo esc_attr($surcharge['threshold'] ?? ''); ?>"
+                                               class="moq-surcharge-threshold"
+                                               style="width: 120px;">
+                                        <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 4px;"><?php echo esc_html($this->get_text('surcharge_type_label')); ?></label>
+                                        <select name="moq_min_order_surcharges_json[<?php echo $index; ?>][type]" class="moq-surcharge-type" style="width: 140px;">
+                                            <option value="fixed" <?php selected($surcharge['type'] ?? 'fixed', 'fixed'); ?>><?php echo esc_html($this->get_text('surcharge_type_fixed')); ?></option>
+                                            <option value="percentage" <?php selected($surcharge['type'] ?? 'fixed', 'percentage'); ?>><?php echo esc_html($this->get_text('surcharge_type_percentage')); ?></option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 4px;"><?php echo esc_html($this->get_text('surcharge_value_label')); ?></label>
+                                        <input type="number" step="0.01" name="moq_min_order_surcharges_json[<?php echo $index; ?>][value]"
+                                               value="<?php echo esc_attr($surcharge['value'] ?? ''); ?>"
+                                               class="moq-surcharge-value"
+                                               style="width: 120px;">
+                                    </div>
+                                    <div style="padding-top: 22px;">
+                                        <button type="button" class="button moq-remove-limit"><?php echo esc_html($this->get_text('remove')); ?></button>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" id="add-global-surcharge" class="button" style="margin-top: 10px;">
+                                <?php echo esc_html($this->get_text('add_surcharge_rule')); ?>
+                            </button>
+                            <p class="description"><?php echo esc_html($this->get_text('min_order_surcharge_desc')); ?></p>
+                            <input type="hidden" name="moq_min_order_surcharges" id="moq_min_order_surcharges_hidden" value="">
                         </td>
                     </tr>
                     
@@ -429,10 +543,188 @@ class MOQ_Limits_Plugin {
                             </script>
                         </td>
                     </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label><?php echo esc_html($this->get_text('product_surcharges_label')); ?></label>
+                        </th>
+                        <td>
+                            <div id="product-surcharges-container" <?php echo !$is_premium ? 'style="opacity: 0.5; pointer-events: none;"' : ''; ?>>
+                                <?php foreach ($product_surcharges as $index => $surcharge): ?>
+                                <div class="moq-limit-row" data-index="<?php echo $index; ?>">
+                                    <select name="moq_product_surcharges_json[<?php echo $index; ?>][product_id]" class="moq-product-select">
+                                        <option value=""><?php echo esc_html($this->get_text('select_product')); ?></option>
+                                        <?php foreach ($products as $product): ?>
+                                            <option value="<?php echo $product->get_id(); ?>" <?php selected($surcharge['product_id'], $product->get_id()); ?>>
+                                                <?php echo esc_html($product->get_name()); ?> (ID: <?php echo $product->get_id(); ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input type="number" step="0.01" name="moq_product_surcharges_json[<?php echo $index; ?>][threshold]" 
+                                           placeholder="<?php echo esc_attr($this->get_text('threshold_amount')); ?>" 
+                                           value="<?php echo esc_attr($surcharge['threshold'] ?? ''); ?>" 
+                                           class="moq-surcharge-threshold"
+                                           style="width: 110px;">
+                                    <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                                    <select name="moq_product_surcharges_json[<?php echo $index; ?>][type]" class="moq-surcharge-type" style="width: 130px;">
+                                        <option value="fixed" <?php selected($surcharge['type'] ?? 'fixed', 'fixed'); ?>><?php echo esc_html($this->get_text('surcharge_type_fixed')); ?></option>
+                                        <option value="percentage" <?php selected($surcharge['type'] ?? 'fixed', 'percentage'); ?>><?php echo esc_html($this->get_text('surcharge_type_percentage')); ?></option>
+                                    </select>
+                                    <input type="number" step="0.01" name="moq_product_surcharges_json[<?php echo $index; ?>][value]" 
+                                           placeholder="<?php echo esc_attr($this->get_text('surcharge_value_label')); ?>" 
+                                           value="<?php echo esc_attr($surcharge['value'] ?? ''); ?>" 
+                                           class="moq-surcharge-value"
+                                           style="width: 110px;">
+                                    <button type="button" class="button moq-remove-limit"><?php echo esc_html($this->get_text('remove')); ?></button>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php if ($is_premium): ?>
+                            <button type="button" id="add-product-surcharge" class="button" style="margin-top: 10px;">
+                                <?php echo esc_html($this->get_text('add_product_surcharge')); ?>
+                            </button>
+                            <?php endif; ?>
+                            <p class="description"><?php echo esc_html($this->get_text('product_surcharges_desc')); ?></p>
+                            <input type="hidden" name="moq_product_surcharges" id="moq_product_surcharges_hidden" value="">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label><?php echo esc_html($this->get_text('category_surcharges_label')); ?></label>
+                        </th>
+                        <td>
+                            <div id="category-surcharges-container" <?php echo !$is_premium ? 'style="opacity: 0.5; pointer-events: none;"' : ''; ?>>
+                                <?php foreach ($category_surcharges as $index => $surcharge): ?>
+                                <div class="moq-limit-row" data-index="<?php echo $index; ?>">
+                                    <select name="moq_category_surcharges_json[<?php echo $index; ?>][category_id]" class="moq-category-select">
+                                        <option value=""><?php echo esc_html($this->get_text('select_category')); ?></option>
+                                        <?php foreach ($categories as $category): ?>
+                                            <option value="<?php echo $category->term_id; ?>" <?php selected($surcharge['category_id'], $category->term_id); ?>>
+                                                <?php echo esc_html($category->name); ?> (ID: <?php echo $category->term_id; ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input type="number" step="0.01" name="moq_category_surcharges_json[<?php echo $index; ?>][threshold]" 
+                                           placeholder="<?php echo esc_attr($this->get_text('threshold_amount')); ?>" 
+                                           value="<?php echo esc_attr($surcharge['threshold'] ?? ''); ?>" 
+                                           class="moq-surcharge-threshold"
+                                           style="width: 110px;">
+                                    <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                                    <select name="moq_category_surcharges_json[<?php echo $index; ?>][type]" class="moq-surcharge-type" style="width: 130px;">
+                                        <option value="fixed" <?php selected($surcharge['type'] ?? 'fixed', 'fixed'); ?>><?php echo esc_html($this->get_text('surcharge_type_fixed')); ?></option>
+                                        <option value="percentage" <?php selected($surcharge['type'] ?? 'fixed', 'percentage'); ?>><?php echo esc_html($this->get_text('surcharge_type_percentage')); ?></option>
+                                    </select>
+                                    <input type="number" step="0.01" name="moq_category_surcharges_json[<?php echo $index; ?>][value]" 
+                                           placeholder="<?php echo esc_attr($this->get_text('surcharge_value_label')); ?>" 
+                                           value="<?php echo esc_attr($surcharge['value'] ?? ''); ?>" 
+                                           class="moq-surcharge-value"
+                                           style="width: 110px;">
+                                    <button type="button" class="button moq-remove-limit"><?php echo esc_html($this->get_text('remove')); ?></button>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php if ($is_premium): ?>
+                            <button type="button" id="add-category-surcharge" class="button" style="margin-top: 10px;">
+                                <?php echo esc_html($this->get_text('add_category_surcharge')); ?>
+                            </button>
+                            <?php endif; ?>
+                            <p class="description"><?php echo esc_html($this->get_text('category_surcharges_desc')); ?></p>
+                            <input type="hidden" name="moq_category_surcharges" id="moq_category_surcharges_hidden" value="">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row">
+                            <label><?php echo esc_html($this->get_text('regional_surcharges_label')); ?></label>
+                        </th>
+                        <td>
+                            <div id="regional-surcharges-container" <?php echo !$is_premium ? 'style="opacity: 0.5; pointer-events: none;"' : ''; ?>>
+                                <?php foreach ($regional_surcharges as $index => $surcharge): ?>
+                                <div class="moq-limit-row moq-regional-row" data-index="<?php echo $index; ?>">
+                                    <select name="moq_regional_surcharges_json[<?php echo $index; ?>][country]" class="moq-country-select" data-index="surcharge-<?php echo $index; ?>">
+                                        <option value=""><?php echo esc_html($this->get_text('any_country')); ?></option>
+                                        <?php foreach ($countries as $code => $name): ?>
+                                            <option value="<?php echo esc_attr($code); ?>" <?php selected($surcharge['country'] ?? '', $code); ?>>
+                                                <?php echo esc_html($name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <select name="moq_regional_surcharges_json[<?php echo $index; ?>][state]" class="moq-state-select" data-index="surcharge-<?php echo $index; ?>">
+                                        <option value=""><?php echo esc_html($this->get_text('any_state')); ?></option>
+                                        <?php 
+                                        if (!empty($surcharge['country']) && isset($states[$surcharge['country']])) {
+                                            foreach ($states[$surcharge['country']] as $state_code => $state_name) {
+                                                echo '<option value="' . esc_attr($state_code) . '" ' . selected($surcharge['state'] ?? '', $state_code, false) . '>' . esc_html($state_name) . '</option>';
+                                            }
+                                        }
+                                        ?>
+                                    </select>
+                                    <input type="text" name="moq_regional_surcharges_json[<?php echo $index; ?>][postal_code]" 
+                                           placeholder="<?php echo esc_attr($this->get_text('postal_code_placeholder')); ?>" 
+                                           value="<?php echo esc_attr($surcharge['postal_code'] ?? ''); ?>" 
+                                           style="width: 120px;">
+                                    <input type="number" step="0.01" name="moq_regional_surcharges_json[<?php echo $index; ?>][threshold]" 
+                                           placeholder="<?php echo esc_attr($this->get_text('threshold_amount')); ?>" 
+                                           value="<?php echo esc_attr($surcharge['threshold'] ?? ''); ?>" 
+                                           class="moq-surcharge-threshold"
+                                           style="width: 110px;">
+                                    <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                                    <select name="moq_regional_surcharges_json[<?php echo $index; ?>][type]" class="moq-surcharge-type" style="width: 130px;">
+                                        <option value="fixed" <?php selected($surcharge['type'] ?? 'fixed', 'fixed'); ?>><?php echo esc_html($this->get_text('surcharge_type_fixed')); ?></option>
+                                        <option value="percentage" <?php selected($surcharge['type'] ?? 'fixed', 'percentage'); ?>><?php echo esc_html($this->get_text('surcharge_type_percentage')); ?></option>
+                                    </select>
+                                    <input type="number" step="0.01" name="moq_regional_surcharges_json[<?php echo $index; ?>][value]" 
+                                           placeholder="<?php echo esc_attr($this->get_text('surcharge_value_label')); ?>" 
+                                           value="<?php echo esc_attr($surcharge['value'] ?? ''); ?>" 
+                                           class="moq-surcharge-value"
+                                           style="width: 110px;">
+                                    <button type="button" class="button moq-remove-limit"><?php echo esc_html($this->get_text('remove')); ?></button>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php if ($is_premium): ?>
+                            <button type="button" id="add-regional-surcharge" class="button" style="margin-top: 10px;">
+                                <?php echo esc_html($this->get_text('add_regional_surcharge')); ?>
+                            </button>
+                            <?php endif; ?>
+                            <p class="description"><?php echo esc_html($this->get_text('regional_surcharges_desc')); ?></p>
+                            <input type="hidden" name="moq_regional_surcharges" id="moq_regional_surcharges_hidden" value="">
+                        </td>
+                    </tr>
                 </table>
                 
                 <script type="text/javascript">
                 jQuery(document).ready(function($) {
+                    var globalSurchargeIndex = <?php echo count($min_order_surcharges); ?>;
+                    var globalSurchargeTemplate = `
+                        <div class="moq-limit-row" data-index="${globalSurchargeIndex}">
+                            <div>
+                                <label style="display: block; margin-bottom: 4px;"><?php echo esc_js($this->get_text('surcharge_threshold_label')); ?></label>
+                                <input type="number" step="0.01" name="moq_min_order_surcharges_json[${globalSurchargeIndex}][threshold]"
+                                       class="moq-surcharge-threshold"
+                                       style="width: 120px;">
+                                <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 4px;"><?php echo esc_js($this->get_text('surcharge_type_label')); ?></label>
+                                <select name="moq_min_order_surcharges_json[${globalSurchargeIndex}][type]" class="moq-surcharge-type" style="width: 140px;">
+                                    <option value="fixed"><?php echo esc_js($this->get_text('surcharge_type_fixed')); ?></option>
+                                    <option value="percentage"><?php echo esc_js($this->get_text('surcharge_type_percentage')); ?></option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 4px;"><?php echo esc_js($this->get_text('surcharge_value_label')); ?></label>
+                                <input type="number" step="0.01" name="moq_min_order_surcharges_json[${globalSurchargeIndex}][value]"
+                                       class="moq-surcharge-value"
+                                       style="width: 120px;">
+                            </div>
+                            <div style="padding-top: 22px;">
+                                <button type="button" class="button moq-remove-limit"><?php echo esc_js($this->get_text('remove')); ?></button>
+                            </div>
+                        </div>
+                    `;
+
                     // Template for products
                     var productIndex = <?php echo count($product_limits); ?>;
                     var productTemplate = `
@@ -504,7 +796,104 @@ class MOQ_Limits_Plugin {
                             <button type="button" class="button moq-remove-limit"><?php echo esc_js($this->get_text('remove')); ?></button>
                         </div>
                     `;
+
+                    // Template for product surcharges
+                    var productSurchargeIndex = <?php echo count($product_surcharges); ?>;
+                    var productSurchargeTemplate = `
+                        <div class="moq-limit-row" data-index="${productSurchargeIndex}">
+                            <select name="moq_product_surcharges_json[${productSurchargeIndex}][product_id]" class="moq-product-select">
+                                <option value=""><?php echo esc_js($this->get_text('select_product')); ?></option>
+                                <?php foreach ($products as $product): ?>
+                                    <option value="<?php echo $product->get_id(); ?>">
+                                        <?php echo esc_js($product->get_name()); ?> (ID: <?php echo $product->get_id(); ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input type="number" step="0.01" name="moq_product_surcharges_json[${productSurchargeIndex}][threshold]" 
+                                   placeholder="<?php echo esc_attr($this->get_text('threshold_amount')); ?>" 
+                                   class="moq-surcharge-threshold"
+                                   style="width: 110px;">
+                            <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                            <select name="moq_product_surcharges_json[${productSurchargeIndex}][type]" class="moq-surcharge-type" style="width: 130px;">
+                                <option value="fixed"><?php echo esc_js($this->get_text('surcharge_type_fixed')); ?></option>
+                                <option value="percentage"><?php echo esc_js($this->get_text('surcharge_type_percentage')); ?></option>
+                            </select>
+                            <input type="number" step="0.01" name="moq_product_surcharges_json[${productSurchargeIndex}][value]" 
+                                   placeholder="<?php echo esc_attr($this->get_text('surcharge_value_label')); ?>" 
+                                   class="moq-surcharge-value"
+                                   style="width: 110px;">
+                            <button type="button" class="button moq-remove-limit"><?php echo esc_js($this->get_text('remove')); ?></button>
+                        </div>
+                    `;
+
+                    // Template for category surcharges
+                    var categorySurchargeIndex = <?php echo count($category_surcharges); ?>;
+                    var categorySurchargeTemplate = `
+                        <div class="moq-limit-row" data-index="${categorySurchargeIndex}">
+                            <select name="moq_category_surcharges_json[${categorySurchargeIndex}][category_id]" class="moq-category-select">
+                                <option value=""><?php echo esc_js($this->get_text('select_category')); ?></option>
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?php echo $category->term_id; ?>">
+                                        <?php echo esc_js($category->name); ?> (ID: <?php echo $category->term_id; ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input type="number" step="0.01" name="moq_category_surcharges_json[${categorySurchargeIndex}][threshold]" 
+                                   placeholder="<?php echo esc_attr($this->get_text('threshold_amount')); ?>" 
+                                   class="moq-surcharge-threshold"
+                                   style="width: 110px;">
+                            <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                            <select name="moq_category_surcharges_json[${categorySurchargeIndex}][type]" class="moq-surcharge-type" style="width: 130px;">
+                                <option value="fixed"><?php echo esc_js($this->get_text('surcharge_type_fixed')); ?></option>
+                                <option value="percentage"><?php echo esc_js($this->get_text('surcharge_type_percentage')); ?></option>
+                            </select>
+                            <input type="number" step="0.01" name="moq_category_surcharges_json[${categorySurchargeIndex}][value]" 
+                                   placeholder="<?php echo esc_attr($this->get_text('surcharge_value_label')); ?>" 
+                                   class="moq-surcharge-value"
+                                   style="width: 110px;">
+                            <button type="button" class="button moq-remove-limit"><?php echo esc_js($this->get_text('remove')); ?></button>
+                        </div>
+                    `;
+
+                    // Template for regional surcharges
+                    var regionalSurchargeIndex = <?php echo count($regional_surcharges); ?>;
+                    var regionalSurchargeTemplate = `
+                        <div class="moq-limit-row moq-regional-row" data-index="${regionalSurchargeIndex}">
+                            <select name="moq_regional_surcharges_json[${regionalSurchargeIndex}][country]" class="moq-country-select" data-index="surcharge-${regionalSurchargeIndex}">
+                                <option value=""><?php echo esc_js($this->get_text('any_country')); ?></option>
+                                <?php foreach ($countries as $code => $name): ?>
+                                    <option value="<?php echo esc_js($code); ?>"><?php echo esc_js($name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <select name="moq_regional_surcharges_json[${regionalSurchargeIndex}][state]" class="moq-state-select" data-index="surcharge-${regionalSurchargeIndex}">
+                                <option value=""><?php echo esc_js($this->get_text('any_state')); ?></option>
+                            </select>
+                            <input type="text" name="moq_regional_surcharges_json[${regionalSurchargeIndex}][postal_code]" 
+                                   placeholder="<?php echo esc_attr($this->get_text('postal_code_placeholder')); ?>" 
+                                   style="width: 120px;">
+                            <input type="number" step="0.01" name="moq_regional_surcharges_json[${regionalSurchargeIndex}][threshold]" 
+                                   placeholder="<?php echo esc_attr($this->get_text('threshold_amount')); ?>" 
+                                   class="moq-surcharge-threshold"
+                                   style="width: 110px;">
+                            <strong><?php echo get_woocommerce_currency_symbol(); ?></strong>
+                            <select name="moq_regional_surcharges_json[${regionalSurchargeIndex}][type]" class="moq-surcharge-type" style="width: 130px;">
+                                <option value="fixed"><?php echo esc_js($this->get_text('surcharge_type_fixed')); ?></option>
+                                <option value="percentage"><?php echo esc_js($this->get_text('surcharge_type_percentage')); ?></option>
+                            </select>
+                            <input type="number" step="0.01" name="moq_regional_surcharges_json[${regionalSurchargeIndex}][value]" 
+                                   placeholder="<?php echo esc_attr($this->get_text('surcharge_value_label')); ?>" 
+                                   class="moq-surcharge-value"
+                                   style="width: 110px;">
+                            <button type="button" class="button moq-remove-limit"><?php echo esc_js($this->get_text('remove')); ?></button>
+                        </div>
+                    `;
                     
+                    $('#add-global-surcharge').on('click', function() {
+                        var newRow = globalSurchargeTemplate.replace(/\$\{globalSurchargeIndex\}/g, globalSurchargeIndex);
+                        $('#global-surcharges-container').append(newRow);
+                        globalSurchargeIndex++;
+                    });
+
                     // Add product limit
                     $('#add-product-limit').on('click', function() {
                         var newRow = productTemplate.replace(/\$\{productIndex\}/g, productIndex);
@@ -525,12 +914,32 @@ class MOQ_Limits_Plugin {
                         $('#regional-limits-container').append(newRow);
                         regionalIndex++;
                     });
+
+                    // Add product surcharge
+                    $('#add-product-surcharge').on('click', function() {
+                        var newRow = productSurchargeTemplate.replace(/\$\{productSurchargeIndex\}/g, productSurchargeIndex);
+                        $('#product-surcharges-container').append(newRow);
+                        productSurchargeIndex++;
+                    });
+
+                    // Add category surcharge
+                    $('#add-category-surcharge').on('click', function() {
+                        var newRow = categorySurchargeTemplate.replace(/\$\{categorySurchargeIndex\}/g, categorySurchargeIndex);
+                        $('#category-surcharges-container').append(newRow);
+                        categorySurchargeIndex++;
+                    });
+
+                    // Add regional surcharge
+                    $('#add-regional-surcharge').on('click', function() {
+                        var newRow = regionalSurchargeTemplate.replace(/\$\{regionalSurchargeIndex\}/g, regionalSurchargeIndex);
+                        $('#regional-surcharges-container').append(newRow);
+                        regionalSurchargeIndex++;
+                    });
                     
                     // Handle country change - update states dropdown
                     $(document).on('change', '.moq-country-select', function() {
                         var country = $(this).val();
-                        var index = $(this).data('index');
-                        var stateSelect = $('.moq-state-select[data-index="' + index + '"]');
+                        var stateSelect = $(this).closest('.moq-limit-row').find('.moq-state-select').first();
                         
                         stateSelect.empty();
                         stateSelect.append('<option value=""><?php echo esc_js($this->get_text('any_state')); ?></option>');
@@ -549,6 +958,22 @@ class MOQ_Limits_Plugin {
                     
                     // Before submit, collect data to JSON
                     $('form').on('submit', function() {
+                        var globalSurcharges = [];
+                        $('#global-surcharges-container .moq-limit-row').each(function() {
+                            var threshold = $(this).find('.moq-surcharge-threshold').val();
+                            var type = $(this).find('.moq-surcharge-type').val();
+                            var value = $(this).find('.moq-surcharge-value').val();
+
+                            if (threshold && value) {
+                                globalSurcharges.push({
+                                    threshold: threshold || '',
+                                    type: type || 'fixed',
+                                    value: value || ''
+                                });
+                            }
+                        });
+                        $('#moq_min_order_surcharges_hidden').val(JSON.stringify(globalSurcharges));
+
                         var productLimits = [];
                         $('#product-limits-container .moq-limit-row').each(function() {
                             var productId = $(this).find('.moq-product-select').val();
@@ -600,6 +1025,64 @@ class MOQ_Limits_Plugin {
                             }
                         });
                         $('#moq_regional_limits_hidden').val(JSON.stringify(regionalLimits));
+
+                        var productSurcharges = [];
+                        $('#product-surcharges-container .moq-limit-row').each(function() {
+                            var productId = $(this).find('.moq-product-select').val();
+                            var threshold = $(this).find('.moq-surcharge-threshold').val();
+                            var type = $(this).find('.moq-surcharge-type').val();
+                            var value = $(this).find('.moq-surcharge-value').val();
+
+                            if (productId) {
+                                productSurcharges.push({
+                                    product_id: productId,
+                                    threshold: threshold || '',
+                                    type: type || 'fixed',
+                                    value: value || ''
+                                });
+                            }
+                        });
+                        $('#moq_product_surcharges_hidden').val(JSON.stringify(productSurcharges));
+
+                        var categorySurcharges = [];
+                        $('#category-surcharges-container .moq-limit-row').each(function() {
+                            var categoryId = $(this).find('.moq-category-select').val();
+                            var threshold = $(this).find('.moq-surcharge-threshold').val();
+                            var type = $(this).find('.moq-surcharge-type').val();
+                            var value = $(this).find('.moq-surcharge-value').val();
+
+                            if (categoryId) {
+                                categorySurcharges.push({
+                                    category_id: categoryId,
+                                    threshold: threshold || '',
+                                    type: type || 'fixed',
+                                    value: value || ''
+                                });
+                            }
+                        });
+                        $('#moq_category_surcharges_hidden').val(JSON.stringify(categorySurcharges));
+
+                        var regionalSurcharges = [];
+                        $('#regional-surcharges-container .moq-limit-row').each(function() {
+                            var country = $(this).find('.moq-country-select').val();
+                            var state = $(this).find('.moq-state-select').val();
+                            var postalCode = $(this).find('input[name*="postal_code"]').val();
+                            var threshold = $(this).find('.moq-surcharge-threshold').val();
+                            var type = $(this).find('.moq-surcharge-type').val();
+                            var value = $(this).find('.moq-surcharge-value').val();
+
+                            if (country || state || postalCode) {
+                                regionalSurcharges.push({
+                                    country: country || '',
+                                    state: state || '',
+                                    postal_code: postalCode || '',
+                                    threshold: threshold || '',
+                                    type: type || 'fixed',
+                                    value: value || ''
+                                });
+                            }
+                        });
+                        $('#moq_regional_surcharges_hidden').val(JSON.stringify(regionalSurcharges));
                     });
                 });
                 </script>
@@ -868,6 +1351,260 @@ class MOQ_Limits_Plugin {
                 }
             }
         }
+    }
+
+    public function apply_minimum_order_surcharge($cart) {
+        if ((is_admin() && !defined('DOING_AJAX')) || !$cart || $cart->is_empty()) {
+            return;
+        }
+
+        $cart_total = (float) $cart->get_subtotal();
+        if ($cart_total <= 0) {
+            return;
+        }
+
+        $candidate = $this->get_applicable_surcharge_candidate($cart, $cart_total);
+        if (!$candidate || empty($candidate['amount'])) {
+            return;
+        }
+
+        $cart->add_fee($this->get_text('small_order_surcharge_fee'), $candidate['amount'], false);
+    }
+
+    private function get_applicable_surcharge_candidate($cart, $cart_total) {
+        $best_candidate = $this->get_best_surcharge_candidate_from_rules(
+            $this->get_global_surcharge_rules(),
+            $cart_total,
+            10
+        );
+
+        if (!$this->is_premium_active()) {
+            return $best_candidate;
+        }
+
+        $product_ids = array();
+        $category_ids = array();
+        foreach ($cart->get_cart() as $cart_item) {
+            $product_id = (int) $cart_item['product_id'];
+            $product_ids[] = $product_id;
+
+            $product_categories = wp_get_post_terms($product_id, 'product_cat', array('fields' => 'ids'));
+            if (!is_wp_error($product_categories)) {
+                $category_ids = array_merge($category_ids, array_map('intval', $product_categories));
+            }
+        }
+
+        $product_ids = array_values(array_unique($product_ids));
+        $category_ids = array_values(array_unique($category_ids));
+
+        $best_candidate = $this->pick_better_surcharge_candidate(
+            $best_candidate,
+            $this->get_best_targeted_surcharge_candidate(
+                get_option('moq_product_surcharges', '[]'),
+                'product_id',
+                $product_ids,
+                $cart_total,
+                30
+            )
+        );
+
+        $best_candidate = $this->pick_better_surcharge_candidate(
+            $best_candidate,
+            $this->get_best_targeted_surcharge_candidate(
+                get_option('moq_category_surcharges', '[]'),
+                'category_id',
+                $category_ids,
+                $cart_total,
+                20
+            )
+        );
+
+        $customer_country = WC()->customer ? (WC()->customer->get_shipping_country() ?: WC()->customer->get_billing_country()) : '';
+        $customer_state = WC()->customer ? (WC()->customer->get_shipping_state() ?: WC()->customer->get_billing_state()) : '';
+        $customer_postcode = WC()->customer ? (WC()->customer->get_shipping_postcode() ?: WC()->customer->get_billing_postcode()) : '';
+
+        $best_candidate = $this->pick_better_surcharge_candidate(
+            $best_candidate,
+            $this->get_best_regional_surcharge_candidate(
+                get_option('moq_regional_surcharges', '[]'),
+                $customer_country,
+                $customer_state,
+                $customer_postcode,
+                $cart_total
+            )
+        );
+
+        return $best_candidate;
+    }
+
+    private function get_global_surcharge_rules() {
+        $rules = json_decode(get_option('moq_min_order_surcharges', '[]'), true);
+        if (is_array($rules) && !empty($rules)) {
+            return $rules;
+        }
+
+        $legacy_threshold = get_option('moq_min_order_surcharge_threshold', '');
+        $legacy_value = get_option('moq_min_order_surcharge_value', '');
+        if ($legacy_threshold !== '' && $legacy_value !== '') {
+            return array(
+                array(
+                    'threshold' => $legacy_threshold,
+                    'type' => get_option('moq_min_order_surcharge_type', 'fixed'),
+                    'value' => $legacy_value,
+                ),
+            );
+        }
+
+        return array();
+    }
+
+    private function get_best_surcharge_candidate_from_rules($rules, $cart_total, $priority) {
+        if (!is_array($rules) || empty($rules)) {
+            return null;
+        }
+
+        $best_candidate = null;
+        foreach ($rules as $rule) {
+            $candidate = $this->build_surcharge_candidate(
+                $rule['threshold'] ?? '',
+                $rule['type'] ?? 'fixed',
+                $rule['value'] ?? '',
+                $cart_total,
+                $priority
+            );
+
+            $best_candidate = $this->pick_better_surcharge_candidate($best_candidate, $candidate);
+        }
+
+        return $best_candidate;
+    }
+
+    private function get_best_targeted_surcharge_candidate($rules_json, $key, $matched_ids, $cart_total, $priority) {
+        if (empty($matched_ids)) {
+            return null;
+        }
+
+        $rules = json_decode($rules_json, true);
+        if (!is_array($rules)) {
+            return null;
+        }
+
+        $best_candidate = null;
+        foreach ($rules as $rule) {
+            if (empty($rule[$key]) || !in_array((int) $rule[$key], $matched_ids, true)) {
+                continue;
+            }
+
+            $candidate = $this->build_surcharge_candidate(
+                $rule['threshold'] ?? '',
+                $rule['type'] ?? 'fixed',
+                $rule['value'] ?? '',
+                $cart_total,
+                $priority
+            );
+
+            $best_candidate = $this->pick_better_surcharge_candidate($best_candidate, $candidate);
+        }
+
+        return $best_candidate;
+    }
+
+    private function get_best_regional_surcharge_candidate($rules_json, $country, $state, $postcode, $cart_total) {
+        $rules = json_decode($rules_json, true);
+        if (!is_array($rules)) {
+            return null;
+        }
+
+        $best_candidate = null;
+        foreach ($rules as $rule) {
+            if (empty($rule['country']) && empty($rule['state']) && empty($rule['postal_code'])) {
+                continue;
+            }
+
+            $specificity = 0;
+
+            if (!empty($rule['country'])) {
+                if ($rule['country'] !== $country) {
+                    continue;
+                }
+                $specificity = 1;
+            }
+
+            if (!empty($rule['state'])) {
+                if ($rule['state'] !== $state) {
+                    continue;
+                }
+                $specificity = 2;
+            }
+
+            if (!empty($rule['postal_code'])) {
+                if (strpos((string) $postcode, (string) $rule['postal_code']) !== 0) {
+                    continue;
+                }
+                $specificity = 3;
+            }
+
+            $candidate = $this->build_surcharge_candidate(
+                $rule['threshold'] ?? '',
+                $rule['type'] ?? 'fixed',
+                $rule['value'] ?? '',
+                $cart_total,
+                40 + $specificity
+            );
+
+            $best_candidate = $this->pick_better_surcharge_candidate($best_candidate, $candidate);
+        }
+
+        return $best_candidate;
+    }
+
+    private function build_surcharge_candidate($threshold, $type, $value, $cart_total, $priority) {
+        $threshold = (float) $threshold;
+        $value = (float) $value;
+        $normalized_type = $type === 'percentage' ? 'percentage' : 'fixed';
+
+        if ($threshold <= 0 || $value <= 0 || $cart_total >= $threshold) {
+            return null;
+        }
+
+        $amount = $normalized_type === 'percentage' ? ($cart_total * ($value / 100)) : $value;
+        $amount = round((float) $amount, wc_get_price_decimals());
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return array(
+            'priority' => (int) $priority,
+            'threshold' => $threshold,
+            'amount' => $amount,
+        );
+    }
+
+    private function pick_better_surcharge_candidate($current, $candidate) {
+        if (!$candidate) {
+            return $current;
+        }
+
+        if (!$current) {
+            return $candidate;
+        }
+
+        if ($candidate['priority'] > $current['priority']) {
+            return $candidate;
+        }
+
+        if ($candidate['priority'] === $current['priority']) {
+            if ($candidate['amount'] > $current['amount']) {
+                return $candidate;
+            }
+
+            if ($candidate['amount'] === $current['amount'] && $candidate['threshold'] > $current['threshold']) {
+                return $candidate;
+            }
+        }
+
+        return $current;
     }
     
     private function parse_limits($text) {
